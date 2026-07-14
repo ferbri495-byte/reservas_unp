@@ -87,7 +87,33 @@ switch ($route) {
                 $controller = new AdminController();
                 $controller->verDetalle(); // Para que revises a fondo los datos y los PDF
                 break;
+    // Nuevas rutas de administración
+    case 'guardar_usuario':
+        require_once 'controllers/AdminController.php';
+        $controller = new AdminController();
+        $controller->guardarUsuario();
+        break;
+    case 'cambiar_password':
+        require_once 'controllers/AdminController.php';
+        $controller = new AdminController();
+        $controller->cambiarPassword();
+        break;
+    case 'toggle_estado_usuario':
+        require_once 'controllers/AdminController.php';
+        $controller = new AdminController();
+        $controller->toggleEstadoUsuario();
+        break;
+    case 'toggle_estado_auditorio':
+        require_once 'controllers/AdminController.php';
+        $controller = new AdminController();
+        $controller->toggleEstadoAuditorio();
+        break;
 
+    case 'guardar_auditorio':
+        require_once 'controllers/AdminController.php';
+        $controller = new AdminController();
+        $controller->guardarAuditorio();
+        break;
     default:
         http_response_code(404);
         echo "<h1>404 - Página no encontrada</h1>";
