@@ -12,18 +12,30 @@ class AuthController {
             $password = $_POST['password'] ?? '';
 
             if (!empty($correo) && !empty($password)) {
-                $usuarioModel = new Usuario();
+                                $usuarioModel = new Usuario();
                 $usuario = $usuarioModel->login($correo, $password);
 
                 if ($usuario) {
-                    // Guardamos los datos críticos en la sesión
+                    // Regla especial para el SuperAdmin fijo
+                    if (strtolower($usuario['correo']) === 'admin@unp.edu.pe') {
+                        $_SESSION['id_usuario'] = $usuario['id_usuario'];
+                        $_SESSION['nombre_completo'] = $usuario['nombre_completo'];
+                        $_SESSION['rol'] = 'SuperAdmin';
+                        $_SESSION['id_dependencia'] = null;
+                        header("Location: index.php?route=superadmin_dashboard");
+                        exit();
+                    }
+
+                    // Guardado estándar de la sesión
                     $_SESSION['id_usuario'] = $usuario['id_usuario'];
                     $_SESSION['nombre_completo'] = $usuario['nombre_completo'];
                     $_SESSION['rol'] = $usuario['rol'];
                     $_SESSION['id_dependencia'] = $usuario['id_dependencia'];
-                    
-                    // Redirigir según el rol del usuario
-                    if ($_SESSION['rol'] === 'SuperAdmin' || $_SESSION['rol'] === 'Admin_Facultad') {
+
+                    // Redirección según rol
+                    if ($_SESSION['rol'] === 'SuperAdmin') {
+                        header("Location: index.php?route=superadmin_dashboard");
+                    } elseif ($_SESSION['rol'] === 'Admin_Facultad') {
                         header("Location: index.php?route=admin_dashboard");
                     } else {
                         header("Location: index.php?route=catalogo_auditorios");

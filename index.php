@@ -56,26 +56,37 @@ switch ($route) {
         $reservaController->misReservas();
         break;
 
-    case 'dashboard':
-        // Vista temporal del dashboard para probar que la autenticación funciona
-        echo "<!DOCTYPE html><html lang='es'><head><meta charset='UTF-8'><title>Dashboard - Reservas UNP</title>";
-        echo "<link href='https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css' rel='stylesheet'></head>";
-        echo "<body class='bg-light'><div class='container mt-5'>";
-        echo "<div class='card shadow-sm'><div class='card-body'>";
-        echo "<h1 class='text-primary'>Bienvenido al Dashboard</h1>";
-        echo "<hr>";
-        echo "<h4>Datos de Sesión Actual:</h4>";
-        echo "<ul>";
-        echo "<li><strong>ID Usuario:</strong> " . htmlspecialchars($_SESSION['id_usuario']) . "</li>";
-        echo "<li><strong>Nombre Completo:</strong> " . htmlspecialchars($_SESSION['nombre_completo']) . "</li>";
-        echo "<li><strong>Rol:</strong> <span class='badge bg-success'>" . htmlspecialchars($_SESSION['rol']) . "</span></li>";
-        if (!empty($_SESSION['id_dependencia'])) {
-            echo "<li><strong>ID Dependencia:</strong> " . htmlspecialchars($_SESSION['id_dependencia']) . "</li>";
-        }
-        echo "</ul>";
-        echo "<a href='index.php?route=logout' class='btn btn-danger mt-3'>Cerrar Sesión</a>";
-        echo "</div></div></div></body></html>";
-        break;
+        case 'dashboard':
+            // Redirección inteligente según el rol de la sesión
+            if (!isset($_SESSION['rol'])) {
+                header("Location: index.php?route=login");
+                exit();
+            }
+            
+            if ($_SESSION['rol'] === 'SuperAdmin' || (isset($_SESSION['correo']) && $_SESSION['correo'] === 'admin@unp.edu.pe')) {
+                header("Location: index.php?route=superadmin_dashboard");
+            } else {
+                header("Location: index.php?route=admin_dashboard");
+            }
+            exit();
+            break;
+            case 'admin_dashboard':
+                require_once 'controllers/AdminController.php';
+                $controller = new AdminController();
+                $controller->index(); // Carga el panel por facultad
+                break;
+        
+            case 'superadmin_dashboard':
+                require_once 'controllers/AdminController.php';
+                $controller = new AdminController();
+                $controller->superadminDashboard(); // Carga el panel global para ti (admin@unp.edu.pe)
+                break;
+        
+            case 'reserva_detalle':
+                require_once 'controllers/AdminController.php';
+                $controller = new AdminController();
+                $controller->verDetalle(); // Para que revises a fondo los datos y los PDF
+                break;
 
     default:
         http_response_code(404);

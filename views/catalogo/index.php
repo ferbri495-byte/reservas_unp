@@ -84,10 +84,35 @@
                                 Gestionado por: <strong><?= htmlspecialchars($auditorio['nombre_dependencia']) ?></strong>
                             </p>
                             
-                            <div class="d-flex align-items-center mb-3 bg-light p-2 rounded">
+                            <div class="d-flex align-items-center mb-2 bg-light p-2 rounded">
                                 <i class="bi bi-people-fill icono-capacidad me-2 fs-5"></i>
                                 <span class="fw-medium text-dark">Aforo: <?= htmlspecialchars($auditorio['capacidad']) ?> personas</span>
                             </div>
+                            <?php 
+    $rol = $_SESSION['rol'] ?? 'Externo';
+    $es_docente = ($rol === 'Docente' || $rol === 'Alumno');
+    $es_admin = ($rol === 'SuperAdmin' || $rol === 'Admin_Facultad');
+    $es_externo = !$es_docente && !$es_admin;
+    // Helper function to render tariff
+    $mostrarTarifa = function($precio_mid, $precio_full, $label, $cssClass) {
+        if ($precio_mid == $precio_full) {
+            echo "<div class=\"{$cssClass} small fw-bold mt-2\"><i class=\"bi bi-tag-fill me-1\"></i>{$label}: Tarifa Única por Evento: S/ " . number_format($precio_mid, 2) . "</div>";
+        } else {
+            echo "<div class=\"{$cssClass} small fw-bold mt-2\"><i class=\"bi bi-tag-fill me-1\"></i>{$label}: Desde S/ " . number_format($precio_mid, 2) . " hasta S/ " . number_format($precio_full, 2) . "</div>";
+        }
+    };
+    if ($es_docente) {
+        $mostrarTarifa($auditorio['precio_interno_medio_dia'] ?? 0, $auditorio['precio_interno_dia_completo'] ?? 0, 'Tarifa Interna', 'text-success');
+    } elseif ($es_externo) {
+        $mostrarTarifa($auditorio['precio_externo_medio_dia'] ?? 0, $auditorio['precio_externo_dia_completo'] ?? 0, 'Tarifa Externa', 'text-primary');
+    } else { // Admin/other
+        $mostrarTarifa($auditorio['precio_interno_medio_dia'] ?? 0, $auditorio['precio_interno_dia_completo'] ?? 0, 'Tarifa Interna', 'text-success');
+        $mostrarTarifa($auditorio['precio_externo_medio_dia'] ?? 0, $auditorio['precio_externo_dia_completo'] ?? 0, 'Tarifa Externa', 'text-primary');
+    }
+    if (!empty($auditorio['precio_evento_especial']) && $auditorio['precio_evento_especial'] > 0) {
+        echo '<div class="text-warning text-dark small fw-bold mt-1"><i class="bi bi-star-fill me-1"></i>Evento Especial: S/ ' . number_format($auditorio['precio_evento_especial'], 2) . '</div>';
+    }
+?>
                         </div>
                         <div class="card-footer bg-white border-top-0 pt-0 mt-auto pb-3">
                             <div class="d-grid gap-2">

@@ -46,6 +46,16 @@ class ReservaController {
             $fecha = $_POST['fecha_evento'] ?? '';
             $hora_inicio = $_POST['hora_inicio'] ?? '';
             $hora_fin = $_POST['hora_fin'] ?? '';
+            $duracion_alquiler = $_POST['duracion_alquiler'] ?? '';
+            
+            // Validación estricta de tiempo para Medio Día (máx 4 hrs)
+            if ($duracion_alquiler === 'medio_dia') {
+                $diff_segundos = strtotime($hora_fin) - strtotime($hora_inicio);
+                if ($diff_segundos > 14400 || $diff_segundos <= 0) { // 4 horas * 60 * 60
+                    header("Location: index.php?route=reservar_espacio&id=$id_auditorio&error=5");
+                    exit();
+                }
+            }
             
             $auditorioModel = new Auditorio();
             $auditorios = $auditorioModel->obtenerTodos();
@@ -73,42 +83,75 @@ class ReservaController {
                 exit();
             }
 
-            // Lógica de Negocio estricta según el rol
+         // Lógica de Negocio: Monto Dinámico
             $monto_total = 0.00;
             $estado = 'Pendiente';
             $tipo_evento = 'Pago_Ordinario';
             $documento_path = null;
 
-            if ($rol === 'Externo') {
-                $monto_total = $auditorio['precio_externo'];
-                $estado = 'Pendiente';
-            } elseif ($rol === 'Docente' || $rol === 'Admin_Facultad' || $rol === 'SuperAdmin') {
+            // Captura del rol interno
+            $es_interno = ($rol === 'Docente' || $rol === 'Admin_Facultad' || $rol === 'SuperAdmin');
+
+            // Cálculo del monto según auditorio y parámetros
+            if ($id_auditorio == 1) { // Auditorio Central
+                if ($es_interno) {
+                    $monto_total = ($duracion_alquiler === 'medio_dia') ? 400.00 : 800.00;
+                } else {
+                    $tipo_actividad = $_POST['tipo_actividad'] ?? '';
+                    if ($tipo_actividad === 'espectaculo') {
+                        $monto_total = 2000.00;
+                    } else {
+                        // Académico u otro tipo de actividad externa
+                        $precio_medio = $auditorio['precio_externo_medio_dia'] ?? 0;
+                        $precio_completo = $auditorio['precio_externo_dia_completo'] ?? 0;
+                        $monto_total = ($duracion_alquiler === 'medio_dia') ? $precio_medio : $precio_completo;
+                    }
+                }
+            } elseif ($id_auditorio == 7) { // Ingeniería Pesquera
+                $equip = $_POST['equipamiento'] ?? '';
+                switch ($equip) {
+                    case 'solo_ambiente':
+                        $monto_total = 120.00;
+                        break;
+                    case 'multimedia':
+                        $monto_total = 170.00;
+                        break;
+                    case 'multimedia_sonido':
+                        $monto_total = 200.00;
+                        break;
+                    default:
+                        $monto_total = 0.00;
+                }
+            } elseif ($id_auditorio == 8) { // Sala de Conferencias FIM
+                $monto_total = 1000.00;
+            } elseif ($id_auditorio == 9) { // Auditorio FIM
+                $monto_total = 2200.00;
+            } else { // Otros auditorios
+                $precio_medio = $es_interno ? ($auditorio['precio_interno_medio_dia'] ?? 0) : ($auditorio['precio_externo_medio_dia'] ?? 0);
+                $precio_completo = $es_interno ? ($auditorio['precio_interno_dia_completo'] ?? 0) : ($auditorio['precio_externo_dia_completo'] ?? 0);
+                if ($precio_medio == $precio_completo && $precio_medio > 0) {
+                    $monto_total = $precio_medio;
+                } else {
+                    $monto_total = ($duracion_alquiler === 'medio_dia') ? $precio_medio : $precio_completo;
+                }
+            }
+
+            // Verificación de exoneración (Solo Docente/Admin)
+            if ($es_interno && $rol !== 'Alumno') {
                 $solicita_exoneracion = isset($_POST['solicita_exoneracion']) ? true : false;
-                
                 if ($solicita_exoneracion && isset($_FILES['documento_resolucion']) && $_FILES['documento_resolucion']['error'] === UPLOAD_ERR_OK) {
                     $tipo_evento = 'Academico_Gratuito';
                     $monto_total = 0.00;
-                    $estado = 'Por_Verificar'; // La administración debe verificar la resolución
+                    $estado = 'Por_Verificar';
                     
-                    // Subir archivo
                     $upload_dir = __DIR__ . '/../public/uploads/resoluciones/';
-                    if (!is_dir($upload_dir)) {
-                        mkdir($upload_dir, 0777, true);
-                    }
+                    if (!is_dir($upload_dir)) mkdir($upload_dir, 0777, true);
                     $filename = time() . '_' . basename($_FILES['documento_resolucion']['name']);
-                    $target_file = $upload_dir . $filename;
                     
-                    if (move_uploaded_file($_FILES['documento_resolucion']['tmp_name'], $target_file)) {
+                    if (move_uploaded_file($_FILES['documento_resolucion']['tmp_name'], $upload_dir . $filename)) {
                         $documento_path = 'public/uploads/resoluciones/' . $filename;
                     }
-                } else {
-                    $monto_total = $auditorio['precio_interno'];
-                    $estado = 'Pendiente';
                 }
-            } else { 
-                // Alumno (Asumimos precio interno estándar)
-                $monto_total = $auditorio['precio_interno'];
-                $estado = 'Pendiente';
             }
 
             $reservaModel = new Reserva();
